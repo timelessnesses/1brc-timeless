@@ -1,12 +1,10 @@
 use dashmap::{self, DashMap};
 use memmap2;
+use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use serde_json;
 use std::io::Write;
-use std::sync::atomic::AtomicU64;
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
-
 mod benches;
 mod io;
 mod truncate;
@@ -29,22 +27,36 @@ fn main() {
     memmap()
 }
 
+const SHARD_AMOUNT: usize = 2048;
+
+fn print_stat() {
+    static shard_count_thing: OnceCell<usize> = OnceCell::new();
+    println!(
+        "Default shard count is actually {} shards but we're using {} shards instead",
+        *shard_count_thing.get_or_init(|| {
+            (std::thread::available_parallelism().map_or(0, usize::from) * 4).next_power_of_two()
+        }),
+        SHARD_AMOUNT
+    );
+}
+
 /// Actual function (other are just tests)
 fn memmap() {
+    print_stat();
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
-    let hashmap: DashMap<String, Vec<f32>> = DashMap::new();
+    let hashmap: DashMap<String, Vec<f32>> = DashMap::with_shard_amount(SHARD_AMOUNT);
     let memmap_thing = unsafe { memmap2::Mmap::map(&f).unwrap() };
     println!(
         "Took {} milliseconds to prepare read to buffer",
         start_of_buffering.elapsed().as_millis()
     );
-    let count = AtomicU64::new(0);
+    // let count = AtomicU64::new(0);
 
-    let last_second = Arc::new(Mutex::new(Instant::now()));
+    // let last_second = Arc::new(Mutex::new(Instant::now()));
     let parsed = unsafe { std::str::from_utf8_unchecked(&memmap_thing) };
     let start_of_counting = Instant::now();
-    let all = parsed.par_lines().count();
+    // let all = parsed.par_lines().count();
     println!(
         "Took {} milliseconds to count lines",
         start_of_counting.elapsed().as_millis()
@@ -52,10 +64,10 @@ fn memmap() {
     let start_of_parsing = Instant::now();
     parsed.par_lines().for_each(|line| {
         // println!("{}", line);
-        if line.is_empty() {
+        if line == "" {
             return;
         }
-        count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        // count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let splitted = line.split(";").collect::<Vec<&str>>();
         if splitted.len() != 2 {
             panic!("Splitted value is NOT 2 values! String: {}", line);
@@ -64,26 +76,26 @@ fn memmap() {
         let temp = splitted[1].parse::<f32>().unwrap();
         hashmap.entry(country).or_insert_with(Vec::new).push(temp);
 
-        if count.load(std::sync::atomic::Ordering::Relaxed) % 10000 == 0 {
-            let mut ls = last_second.lock().unwrap();
-            if ls.elapsed().as_secs() as f32 >= 0.5 {
-                println!(
-                    "Loading File and Parsing File Progress: {}%",
-                    truncate(
-                        (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32)
-                            * 100.0,
-                        2
-                    )
-                );
-                *ls = Instant::now(); // Update the last_second to the current time
-            }
-        }
+        // if count.load(std::sync::atomic::Ordering::Relaxed) % 10000 == 0 {
+        //     let mut ls = last_second.lock().unwrap();
+        //     if ls.elapsed().as_secs() as f32 >= 0.5 {
+        //         println!(
+        //             "Loading File and Parsing File Progress: {}%",
+        //             truncate(
+        //                 (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32)
+        //                     * 100.0,
+        //                 2
+        //             )
+        //         );
+        //         *ls = Instant::now(); // Update the last_second to the current time
+        //     }
+        // }
     });
     println!(
         "Took {} milliseconds for parsing",
         start_of_parsing.elapsed().as_millis()
     );
-    let hashmap2: DashMap<String, (f32, f32, f32)> = DashMap::new();
+    let hashmap2: DashMap<String, (f32, f32, f32)> = DashMap::with_shard_amount(SHARD_AMOUNT);
     let start_conversion = Instant::now();
     hashmap.par_iter_mut().for_each(|mut thing| {
         let pair = thing.pair_mut();
