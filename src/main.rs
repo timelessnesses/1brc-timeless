@@ -99,9 +99,13 @@ fn memmap() {
         "Took {} milliseconds for conversion technology",
         start_conversion.elapsed().as_millis()
     );
-    std::fs::File::create_new("./out.json")
-        .unwrap_or(std::fs::File::open("./out.json").expect("Failed to open ./out.json"))
-        .write(serde_json::to_string_pretty(&hashmap2).unwrap().as_bytes())
+    std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open("./out.json")
+        .unwrap()
+        .write_all(serde_json::to_string_pretty(&hashmap2).unwrap().as_bytes())
         .unwrap();
     #[cfg(debug_assertions)]
     {
