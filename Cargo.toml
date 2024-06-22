@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dashmap = { version = "5.5.3", features = ["rayon", "inline"] }
+dashmap = { version = "5.5.3", features = ["rayon", "inline", "serde"] }
 memmap2 = "0.9.4"
 rayon = "1.10.0"
+serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
