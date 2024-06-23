@@ -17,6 +17,8 @@ jobs:
           cache-name: cache-measurements
         with:
           path: ./measurements.txt
+          key: measurements
+        
         
       - if: ${{ steps.cache-measurements.outputs.cache-hit != 'true' }}
         name: Generate measurements.txt
