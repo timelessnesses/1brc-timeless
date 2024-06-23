@@ -15,7 +15,7 @@ jobs:
         with:
           profile: minimal
           toolchain: nightly
-        
+
       - name: Cache measurements.txt
         id: measurements
         uses: actions/cache@v3
@@ -24,7 +24,7 @@ jobs:
         with:
           path: ./measurements.txt
           key: measurements
-            
+
       - name: Build
         run: cargo +nightly build -r
 
@@ -43,8 +43,8 @@ jobs:
           path: ./measurements.txt
           key: measurements
           # lookup-only: true
-        
-        
-      - if: ${{ steps.cache-measurements.outputs.cache-hit != 'true' }}
+
+
+      - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
         name: Generate measurements.txt
         run: python ./scripts/create_measurements.py 1_000_000_000
