@@ -3,13 +3,36 @@ on: push
 
 jobs:
   bench:
+    needs: generate-measurement
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Install minimal nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: complete
+          toolchain: nightly
+        
+      - name: Cache measurements.txt
+        id: cache-measurements
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-measurements
+        with:
+          path: ./measurements.txt
+          key: measurements
+            
+      - name: Build
+        run: cargo build -r
 
+      - name: Benchmark
+        run: cargo run -r
+  generate-measurement:
+    runs-on: ubuntu-latest
+    steps:
       - name: Cache measurements.txt
         id: cache-measurements
         uses: actions/cache@v3
@@ -23,10 +46,3 @@ jobs:
       - if: ${{ steps.cache-measurements.outputs.cache-hit != 'true' }}
         name: Generate measurements.txt
         run: python ./scripts/create_measurements.py 1_000_000_000
-      
-      - name: Build
-        run: cargo build -r
-
-      - name: Benchmark
-        run: cargo run -r
-        
