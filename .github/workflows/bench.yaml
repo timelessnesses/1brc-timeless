@@ -13,7 +13,7 @@ jobs:
       - name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
-          profile: complete
+          profile: minimal
           toolchain: nightly
         
       - name: Cache measurements.txt
@@ -26,15 +26,14 @@ jobs:
           key: measurements
             
       - name: Build
-        run: cargo build -r
+        run: cargo +nightly build -r
 
       - name: Benchmark
-        run: cargo run -r
+        run: cargo +nightly run -r
   generate-measurement:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Cache measurements.txt
         id: cache-measurements
         uses: actions/cache@v3
