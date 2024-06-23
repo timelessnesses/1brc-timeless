@@ -8,6 +8,7 @@ use serde_json;
 use std::io::Write;
 use std::simd::f32x4;
 use std::simd::num::SimdFloat;
+use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
 mod benches;
@@ -47,16 +48,37 @@ fn memmap() {
     );
 
     let parsed = unsafe { std::str::from_utf8_unchecked(&memmap_thing) };
+    #[cfg(debug_assertions)]
+    let all = parsed.par_lines().count();
+    #[cfg(debug_assertions)]
+    let count = AtomicU64::new(0);
     let start_of_parsing = Instant::now();
     parsed.par_lines().for_each(|line| {
+        #[cfg(debug_assertions)]
+        {
+            count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
         if line == "" {
             return;
         }
         let mut splitted = line.split(";");
         let country = splitted.next().expect("Country not found").to_string();
-        let temp = splitted.next().expect("Temp not found").parse::<f32>().unwrap();
+        let temp = splitted
+            .next()
+            .expect("Temp not found")
+            .parse::<f32>()
+            .unwrap();
         hashmap.entry(country).or_insert_with(Vec::new).push(temp);
+        #[cfg(debug_assertions)]
+        {
+            let x = count.load(std::sync::atomic::Ordering::Relaxed);
+            if x % 1_000_000 == 0 {
+                println!("Parsing: {}%", truncate((x as f32 / all as f32) * 100.0, 2));
+            }
+        }
     });
+    drop(memmap_thing);
+    drop(f);
     println!(
         "Took {} milliseconds for parsing",
         start_of_parsing.elapsed().as_millis()
@@ -77,6 +99,7 @@ fn memmap() {
         let max = val[val.len() - 1];
         hashmap2.insert(key.to_owned(), (min, truncate(mean, 1), max));
     });
+    drop(hashmap);
     println!(
         "Took {} milliseconds for conversion technology",
         start_conversion.elapsed().as_millis()
@@ -106,4 +129,5 @@ fn memmap() {
             hashmap2.get("Alexandria").unwrap().value()
         );
     }
+    drop(hashmap2);
 }
