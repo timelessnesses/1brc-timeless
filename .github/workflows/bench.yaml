@@ -42,7 +42,7 @@ jobs:
         with:
           path: ./measurements.txt
           key: measurements
-          lookup-only: true
+          # lookup-only: true
         
         
       - if: ${{ steps.cache-measurements.outputs.cache-hit != 'true' }}
