@@ -73,7 +73,7 @@ fn memmap() {
         {
             let x = count.load(std::sync::atomic::Ordering::Relaxed);
             if x % 1_000_000 == 0 {
-                println!("Parsing: {}%", truncate((x as f32 / all as f32) * 100.0, 2));
+                print!("Parsing: {}%", truncate((x as f32 / all as f32) * 100.0, 2));
             }
         }
     });

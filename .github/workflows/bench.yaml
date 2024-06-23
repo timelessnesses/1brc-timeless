@@ -1,0 +1,27 @@
+name: Benchmarkery
+on: push
+
+jobs:
+  bench:
+    runs-on: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache measurements.txt
+        id: cache-measurements
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-measurements
+        with:
+          path: ./measurements.txt
+        
+      - if: ${{ steps.cache-measurements.outputs.cache-hit != 'true' }}
+        name: Generate measurements.txt
+        run: python ./scripts/create_measurements.py
+      
+      - name: Build
+        run: cargo build -r
+
+      - name: Benchmark
+        run: cargo run -r
+        
