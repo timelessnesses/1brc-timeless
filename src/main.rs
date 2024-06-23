@@ -1,35 +1,29 @@
+#![feature(portable_simd)]
+
 use dashmap::{self, DashMap};
 use memmap2;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use serde_json;
 use std::io::Write;
+use std::simd::f32x4;
+use std::simd::num::SimdFloat;
 use std::time::Instant;
+
 mod benches;
 mod io;
 mod truncate;
 
 use crate::truncate::truncate;
-// fn verify() {
-//     let f = std::fs::File::open("./measurements.txt").unwrap();
-//     let mut count: u128 = 0;
-//     for line in std::io::BufReader::new(f).lines() {
-//         count += 1;
-//         if count % 10_000_000 < (count - 1) % 10_000_000 {
-//             println!("count: {}", count);
-//         }
-//     }
-//     println!("final: {}", count);
-//     assert_eq!(count, 1_000_000_000);
-// }
 
 fn main() {
     memmap()
 }
 
-const SHARD_AMOUNT: usize = 2048;
+const SHARD_AMOUNT: usize = 1024;
 
 fn print_stat() {
+    #[allow(non_upper_case_globals)]
     static shard_count_thing: OnceCell<usize> = OnceCell::new();
     println!(
         "Default shard count is actually {} shards but we're using {} shards instead",
@@ -51,45 +45,17 @@ fn memmap() {
         "Took {} milliseconds to prepare read to buffer",
         start_of_buffering.elapsed().as_millis()
     );
-    // let count = AtomicU64::new(0);
 
-    // let last_second = Arc::new(Mutex::new(Instant::now()));
     let parsed = unsafe { std::str::from_utf8_unchecked(&memmap_thing) };
-    let start_of_counting = Instant::now();
-    // let all = parsed.par_lines().count();
-    println!(
-        "Took {} milliseconds to count lines",
-        start_of_counting.elapsed().as_millis()
-    );
     let start_of_parsing = Instant::now();
     parsed.par_lines().for_each(|line| {
-        // println!("{}", line);
         if line == "" {
             return;
         }
-        // count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let splitted = line.split(";").collect::<Vec<&str>>();
-        if splitted.len() != 2 {
-            panic!("Splitted value is NOT 2 values! String: {}", line);
-        }
-        let country = splitted[0].to_string();
-        let temp = splitted[1].parse::<f32>().unwrap();
+        let mut splitted = line.split(";");
+        let country = splitted.next().expect("Country not found").to_string();
+        let temp = splitted.next().expect("Temp not found").parse::<f32>().unwrap();
         hashmap.entry(country).or_insert_with(Vec::new).push(temp);
-
-        // if count.load(std::sync::atomic::Ordering::Relaxed) % 10000 == 0 {
-        //     let mut ls = last_second.lock().unwrap();
-        //     if ls.elapsed().as_secs() as f32 >= 0.5 {
-        //         println!(
-        //             "Loading File and Parsing File Progress: {}%",
-        //             truncate(
-        //                 (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32)
-        //                     * 100.0,
-        //                 2
-        //             )
-        //         );
-        //         *ls = Instant::now(); // Update the last_second to the current time
-        //     }
-        // }
     });
     println!(
         "Took {} milliseconds for parsing",
@@ -101,11 +67,15 @@ fn memmap() {
         let pair = thing.pair_mut();
         let key = pair.0;
         let val = pair.1;
-        let mean = truncate(val.iter().sum::<f32>() / val.len() as f32, 1);
-        val.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        let simd_fuckery = f32x4::from_slice(&val);
+        let mean = simd_fuckery.reduce_sum() / simd_fuckery.len() as f32;
+
+        // Sort using the standard sort method
+        val.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
         let min = val[0];
         let max = val[val.len() - 1];
-        hashmap2.insert(key.to_owned(), (min, mean, max));
+        hashmap2.insert(key.to_owned(), (min, truncate(mean, 1), max));
     });
     println!(
         "Took {} milliseconds for conversion technology",
