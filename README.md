@@ -5,3 +5,12 @@ This repository contains rust code that can be used with 1brc (One Billion Row C
 ## Running
 
 Get yourself a `measurements.txt` and just run `cargo run -r`. It will spit out progress on reading file and time it take to parse file and do computation and a `out.json` file
+
+## Perf
+
+ran on my laptop (AMD Ryzen 7 7730U with 16 Gigabytes of RAM with 8 Cores and 16 Logical Processors)
+| stuff                	| my implementation in rust 	| #1 java 1brc                 	|
+|----------------------	|---------------------------	|------------------------------	|
+| RAM Usage (Peak)     	| 4700 Megabytes            	| 26 Megabytes (wtf??)         	|
+| Time to process      	| 58 seconds (BRO)          	| 24 seconds                   	|
+| Peak Disk Activities 	| 170+ MB/s                 	| 390+ MB/s (HOW ARE YOU EVEN) 	|
