@@ -1,6 +1,6 @@
 #![feature(portable_simd)]
 
-use dashmap::{self, DashMap};
+use dashmap::DashMap;
 use memmap2;
 use once_cell::sync::OnceCell;
 use rayon::prelude::*;
@@ -10,6 +10,7 @@ use std::simd::f32x4;
 use std::simd::num::SimdFloat;
 use std::sync::atomic::AtomicU64;
 use std::time::Instant;
+use voracious_radix_sort::RadixSort;
 
 mod benches;
 mod io;
@@ -38,10 +39,21 @@ fn print_stat() {
 /// Actual function (other are just tests)
 fn memmap() {
     print_stat();
+    rayon::ThreadPoolBuilder::new()
+        .num_threads(18)
+        .build_global()
+        .expect("Failed");
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
     let hashmap: DashMap<String, Vec<f32>> = DashMap::with_shard_amount(SHARD_AMOUNT);
-    let memmap_thing = unsafe { memmap2::Mmap::map(&f).unwrap() };
+    let memmap_thing = unsafe {
+        memmap2::MmapOptions::new()
+            .stack()
+            .populate()
+            .huge(None)
+            .map_copy_read_only(&f)
+            .unwrap()
+    };
     println!(
         "Took {} milliseconds to prepare read to buffer",
         start_of_buffering.elapsed().as_millis()
@@ -77,8 +89,6 @@ fn memmap() {
             }
         }
     });
-    drop(memmap_thing);
-    drop(f);
     println!(
         "Took {} milliseconds for parsing",
         start_of_parsing.elapsed().as_millis()
@@ -94,12 +104,15 @@ fn memmap() {
         let mean = simd_fuckery.reduce_sum() / simd_fuckery.len() as f32;
 
         // Sort using the standard sort method
-        val.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
+        val.voracious_mt_sort(
+            std::thread::available_parallelism()
+                .map_or(0, usize::from)
+                .next_power_of_two(),
+        );
         let min = val[0];
         let max = val[val.len() - 1];
         hashmap2.insert(key.to_owned(), (min, truncate(mean, 1), max));
     });
-    drop(hashmap);
     println!(
         "Took {} milliseconds for conversion technology",
         start_conversion.elapsed().as_millis()
@@ -129,5 +142,4 @@ fn memmap() {
             hashmap2.get("Alexandria").unwrap().value()
         );
     }
-    drop(hashmap2);
 }
