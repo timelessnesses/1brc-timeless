@@ -5,7 +5,7 @@ use std::sync::{atomic::AtomicU64, Arc, Mutex};
 use std::time::Instant;
 #[allow(dead_code)]
 fn bench() {
-    let f = std::fs::File::open("./measurements 10mil.txt").unwrap();
+    let f = std::fs::File::open("./measurements.txt").unwrap();
     let hashmap: DashMap<String, Vec<f32>> = DashMap::new();
     let memmap_thing = unsafe { memmap2::Mmap::map(&f).unwrap() };
     let count = AtomicU64::new(0);
