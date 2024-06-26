@@ -2,12 +2,12 @@ use rand::{seq::SliceRandom, Rng};
 use rand_distr::{self, Distribution};
 use rayon::{
     self,
-    iter::{ParallelBridge, ParallelIterator},
+    iter::{IntoParallelIterator, ParallelBridge, ParallelIterator},
     str::ParallelString,
 };
 use std::{
     io::{BufWriter, Write},
-    sync::{atomic::AtomicU64, mpsc::channel, Arc, RwLock},
+    sync::{atomic::AtomicU64, mpsc::sync_channel, Arc, RwLock},
 };
 
 struct Stations(Arc<RwLock<Vec<WeatherStation>>>);
@@ -50,7 +50,7 @@ impl WeatherStation {
 }
 
 fn main() {
-    let (tx, rx) = channel::<Vec<String>>();
+    let (tx, rx) = sync_channel::<Vec<String>>(100);
     let stations = Stations::new();
 
     let WEATHER = include_str!("../../weather_stations.csv");
@@ -88,9 +88,10 @@ fn main() {
         let file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open("./measurements.txt")
             .expect("Unable to open file");
-        let mut w = BufWriter::new(file);
+        let mut w = BufWriter::with_capacity(1024 * 1024 * 30, file);
         for batch in rx {
             for r in batch {
                 w.write_all(r.as_bytes())
@@ -102,27 +103,40 @@ fn main() {
     });
     println!("Spawned writing thread!");
     let c = AtomicU64::new(0);
-    (0..count).par_bridge().for_each_with(tx, |tx, _| {
-        let mut batch = Vec::with_capacity(10000);
-        for _ in 0..10000 {
-            let st = stations.get_random_station();
-            batch.push(format!("{};{}\n", st.station, st.measurement()));
-            drop(st);
-            c.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            let x = c.load(std::sync::atomic::Ordering::Relaxed);
-            if x % 1_000_000 == 0 {
-                println!(
-                    "Progress: {}% ({}/{})",
-                    truncate((x as f32 / count as f32) * 100 as f32, 2),
-                    x,
-                    count
-                )
+    let BATCH_SIZE = 500000;
+    (0..count)
+        .step_by(BATCH_SIZE)
+        .par_bridge()
+        .for_each_with(tx, |tx, _| {
+            let mut batch = Vec::with_capacity(BATCH_SIZE as usize);
+            let mut i = 0;
+            while i < BATCH_SIZE {
+                let x = c.load(std::sync::atomic::Ordering::Relaxed);
+                if x as u128 >= count {
+                    println!("Reached required count, stopping");
+                    break;
+                }
+                let st = stations.get_random_station();
+                batch.push(format!("{};{}\n", st.station, st.measurement()));
+                drop(st);
+                c.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                i += 1;
+                if x % 1_000_000 == 0 {
+                    println!(
+                        "Progress: {}% ({}/{})",
+                        truncate((x as f32 / count as f32) * 100 as f32, 2),
+                        x,
+                        count
+                    );
+                }
             }
-        }
-        tx.send(batch).expect("Failed to send message");
-    });
+            tx.send(batch).expect("Failed to send message");
+        });
     handle.join().expect("Writing thread mysteriously panicked");
-    println!("Success!");
+    println!(
+        "Success! Written {} lines",
+        c.load(std::sync::atomic::Ordering::Relaxed)
+    );
 }
 
 #[inline]
