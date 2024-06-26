@@ -6,11 +6,8 @@ use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use serde_json;
 use std::io::Write;
-use std::simd::f32x4;
-use std::simd::num::SimdFloat;
 use std::sync::atomic::AtomicU64;
 use std::time::Instant;
-use voracious_radix_sort::RadixSort;
 
 mod benches;
 mod io;
@@ -22,7 +19,31 @@ fn main() {
     memmap()
 }
 
-const SHARD_AMOUNT: usize = 1024;
+const SHARD_AMOUNT: usize = 2048;
+
+#[derive(serde::Serialize, Debug)]
+struct Station {
+    #[serde(skip_serializing)]
+    sum: f32,
+    #[serde(skip_serializing)]
+    len: usize,
+
+    min: f32,
+    max: f32,
+    avg: f32,
+}
+
+impl Default for Station {
+    fn default() -> Self {
+        Self {
+            sum: 0.0,
+            len: 0,
+            min: 0.0,
+            max: 0.0,
+            avg: 0.0,
+        }
+    }
+}
 
 fn print_stat() {
     #[allow(non_upper_case_globals)]
@@ -45,7 +66,7 @@ fn memmap() {
         .expect("Failed");
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
-    let hashmap: DashMap<String, Vec<f32>> = DashMap::with_shard_amount(SHARD_AMOUNT);
+    let hashmap: DashMap<String, Station> = DashMap::with_shard_amount(SHARD_AMOUNT);
     let memmap_thing = unsafe {
         memmap2::MmapOptions::new()
             .stack()
@@ -80,42 +101,23 @@ fn memmap() {
             .expect("Temp not found")
             .parse::<f32>()
             .unwrap();
-        hashmap.entry(country).or_insert_with(Vec::new).push(temp);
-        #[cfg(debug_assertions)]
-        {
-            let x = count.load(std::sync::atomic::Ordering::Relaxed);
-            if x % 1_000_000 == 0 {
-                print!("Parsing: {}%", truncate((x as f32 / all as f32) * 100.0, 2));
-            }
+        let mut a = hashmap.entry(country).or_insert(Station::default());
+        let st = a.pair_mut().1;
+        st.len += 1;
+        if temp > st.max {
+            st.max = temp;
+        } else if temp < st.min {
+            st.min = temp;
         }
+        st.sum += temp;
+    });
+    hashmap.par_iter_mut().for_each(|mut t| {
+        let st = t.value_mut();
+        st.avg = truncate(st.sum / st.len as f32, 1)
     });
     println!(
-        "Took {} milliseconds for parsing",
+        "Took {} milliseconds for parsing and processing",
         start_of_parsing.elapsed().as_millis()
-    );
-    let hashmap2: DashMap<String, (f32, f32, f32)> = DashMap::with_shard_amount(SHARD_AMOUNT);
-    let start_conversion = Instant::now();
-    hashmap.par_iter_mut().for_each(|mut thing| {
-        let pair = thing.pair_mut();
-        let key = pair.0;
-        let val = pair.1;
-
-        let simd_fuckery = f32x4::from_slice(&val);
-        let mean = simd_fuckery.reduce_sum() / simd_fuckery.len() as f32;
-
-        // Sort using the standard sort method
-        val.voracious_mt_sort(
-            std::thread::available_parallelism()
-                .map_or(0, usize::from)
-                .next_power_of_two(),
-        );
-        let min = val[0];
-        let max = val[val.len() - 1];
-        hashmap2.insert(key.to_owned(), (min, truncate(mean, 1), max));
-    });
-    println!(
-        "Took {} milliseconds for conversion technology",
-        start_conversion.elapsed().as_millis()
     );
     std::fs::OpenOptions::new()
         .read(true)
@@ -123,11 +125,11 @@ fn memmap() {
         .create(true)
         .open("./out.json")
         .unwrap()
-        .write_all(serde_json::to_string_pretty(&hashmap2).unwrap().as_bytes())
+        .write_all(serde_json::to_string_pretty(&hashmap).unwrap().as_bytes())
         .unwrap();
     #[cfg(debug_assertions)]
     {
-        for thing in hashmap2.iter() {
+        for thing in hashmap.iter() {
             println!(
                 "Station: {}, Temperature (Min/Mean/Max): {}/{}/{}",
                 thing.key(),
@@ -136,10 +138,6 @@ fn memmap() {
                 thing.value().2
             );
         }
-        println!("{:#?}", hashmap2.get("Alexandria").unwrap().value());
-        assert_eq!(
-            &(-27.4 as f32, 20.0 as f32, 68.4 as f32),
-            hashmap2.get("Alexandria").unwrap().value()
-        );
+        println!("{:#?}", hashmap.get("Alexandria").unwrap().value());
     }
 }
