@@ -12,5 +12,5 @@ ran on my laptop (AMD Ryzen 7 7730U with 16 Gigabytes of RAM with 8 Cores and 16
 | stuff                	| my implementation in rust 	| #1 java 1brc                 	|
 |----------------------	|---------------------------	|------------------------------	|
 | RAM Usage (Peak)     	| 2.7 Megabytes            	| 26 Megabytes         	|
-| Time to process      	| 58 seconds (BRO)          	| 24 seconds                   	|
-| Peak Disk Activities 	| 170+ MB/s                 	| 390+ MB/s (HOW ARE YOU EVEN) 	|
+| Time to process      	| 36 seconds (pretty close)          	| 24 seconds                   	|
+| Peak Disk Activities 	| 220+ MB/s                 	| 390+ MB/s (HOW ARE YOU EVEN) 	|
