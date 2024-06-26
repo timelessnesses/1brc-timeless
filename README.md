@@ -14,3 +14,10 @@ ran on my laptop (AMD Ryzen 7 7730U with 16 Gigabytes of RAM with 8 Cores and 16
 | RAM Usage (Peak)     	| 2.7 Megabytes            	| 26 Megabytes         	|
 | Time to process      	| 36 seconds (pretty close)          	| 24 seconds                   	|
 | Peak Disk Activities 	| 220+ MB/s                 	| 390+ MB/s (HOW ARE YOU EVEN) 	|
+
+## Special Thanks
+
+- [0/0](https://github.com/tazz4843)
+- acrimon (discord)
+- erk (discord)
+- and everyone else in Serenity Discord Bot Library Guild!
