@@ -4,7 +4,6 @@ use once_cell::sync::OnceCell;
 use rayon::prelude::*;
 use serde_json;
 use std::io::Write;
-use std::sync::atomic::AtomicU64;
 use std::time::Instant;
 
 mod benches;
@@ -19,7 +18,7 @@ fn main() {
 
 const SHARD_AMOUNT: usize = 2048;
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, Debug, Default)]
 struct Station {
     #[serde(skip_serializing)]
     sum: f32,
@@ -29,18 +28,6 @@ struct Station {
     min: f32,
     max: f32,
     avg: f32,
-}
-
-impl Default for Station {
-    fn default() -> Self {
-        Self {
-            sum: 0.0,
-            len: 0,
-            min: 0.0,
-            max: 0.0,
-            avg: 0.0,
-        }
-    }
 }
 
 fn print_stat() {
@@ -57,6 +44,7 @@ fn print_stat() {
 
 /// Actual function (other are just tests)
 fn memmap() {
+    rayon::ThreadPoolBuilder::new().num_threads(18).use_current_thread().thread_name(|i| format!("1brc-timeless::memmap::processing_{i}")).build_global().expect("Failed to build threadpool");
     print_stat();
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
@@ -75,16 +63,8 @@ fn memmap() {
     );
 
     let parsed = unsafe { std::str::from_utf8_unchecked(&memmap_thing) };
-    #[cfg(debug_assertions)]
-    // let all = parsed.par_lines().count();
-    #[cfg(debug_assertions)]
-    let count = AtomicU64::new(0);
     let start_of_parsing = Instant::now();
     parsed.par_lines().for_each(|line| {
-        #[cfg(debug_assertions)]
-        {
-            count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        }
         if line == "" {
             return;
         }
@@ -96,7 +76,7 @@ fn memmap() {
             .parse::<f32>()
             .unwrap();
         let mut a = hashmap.entry(country).or_insert(Station::default());
-        let st = a.pair_mut().1;
+        let st = a.value_mut();
         st.len += 1;
         if temp > st.max {
             st.max = temp;
@@ -104,17 +84,7 @@ fn memmap() {
             st.min = temp;
         }
         st.sum += temp;
-        /* #[cfg(debug_assertions)]
-        {
-            let c = count.load(std::sync::atomic::Ordering::Relaxed);
-            if c % 1_000_000 == 0 {
-                println!("Progress: {}% ({c}/{all})", truncate(c as f64 / all as f64 , 2));
-            }
-        } */
-    });
-    hashmap.par_iter_mut().for_each(|mut t| {
-        let st = t.value_mut();
-        st.avg = truncate(st.sum as f64 / st.len as f64, 1) as f32
+        st.avg = truncate(st.sum / st.len as f32, 1)
     });
     println!(
         "Took {} milliseconds for parsing and processing",
