@@ -1,14 +1,15 @@
-use rand::{seq::SliceRandom, Rng};
+use rand::seq::SliceRandom;
 use rand_distr::{self, Distribution};
 use rayon::{
     self,
-    iter::{IntoParallelIterator, ParallelBridge, ParallelIterator},
+    iter::{ParallelBridge, ParallelIterator},
     str::ParallelString,
 };
 use std::{
     io::{BufWriter, Write},
     sync::{atomic::AtomicU64, mpsc::sync_channel, Arc, RwLock},
 };
+use better_panic;
 
 struct Stations(Arc<RwLock<Vec<WeatherStation>>>);
 
@@ -49,11 +50,14 @@ impl WeatherStation {
     }
 }
 
+const WEATHER: &str = include_str!("../../weather_stations.csv");
+const BATCH_SIZE: usize = 500000;
+
 fn main() {
+    better_panic::Settings::new().lineno_suffix(true).verbosity(better_panic::Verbosity::Full).install();
     let (tx, rx) = sync_channel::<Vec<String>>(100);
     let stations = Stations::new();
 
-    let WEATHER = include_str!("../../weather_stations.csv");
     let c = AtomicU64::new(0);
     let all = WEATHER.par_lines().count();
     WEATHER.par_lines().for_each(|line| {
@@ -103,7 +107,6 @@ fn main() {
     });
     println!("Spawned writing thread!");
     let c = AtomicU64::new(0);
-    let BATCH_SIZE = 500000;
     (0..count)
         .step_by(BATCH_SIZE)
         .par_bridge()

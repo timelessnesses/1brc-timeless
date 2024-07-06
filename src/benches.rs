@@ -31,7 +31,7 @@ fn bench() {
             println!(
                 "Loading File and Parsing File Progress: {}%",
                 truncate(
-                    (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32) * 100.0,
+                    (count.load(std::sync::atomic::Ordering::Relaxed) as f64 / all as f64) * 100.0,
                     2
                 )
             );
@@ -63,7 +63,7 @@ fn bench() {
             println!(
                 "Loading File and Parsing File Progress: {}%",
                 truncate(
-                    (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32) * 100.0,
+                    (count.load(std::sync::atomic::Ordering::Relaxed) as f64 / all as f64) * 100.0,
                     2
                 )
             );
@@ -94,7 +94,7 @@ fn bench() {
             println!(
                 "Loading File and Parsing File Progress: {}%",
                 truncate(
-                    (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32) * 100.0,
+                    (count.load(std::sync::atomic::Ordering::Relaxed) as f64 / all as f64) * 100.0,
                     2
                 )
             );
@@ -125,7 +125,7 @@ fn bench() {
             println!(
                 "Loading File and Parsing File Progress: {}%",
                 truncate(
-                    (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32) * 100.0,
+                    (count.load(std::sync::atomic::Ordering::Relaxed) as f64 / all as f64) * 100.0,
                     2
                 )
             );
@@ -155,7 +155,7 @@ fn bench() {
             println!(
                 "Loading File and Parsing File Progress: {}%",
                 truncate(
-                    (count.load(std::sync::atomic::Ordering::Relaxed) as f32 / all as f32) * 100.0,
+                    (count.load(std::sync::atomic::Ordering::Relaxed) as f64 / all as f64) * 100.0,
                     2
                 )
             );

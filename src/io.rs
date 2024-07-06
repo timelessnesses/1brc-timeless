@@ -31,11 +31,11 @@ fn io() {
         let pair = thing.pair_mut();
         let key = pair.0;
         let val = pair.1;
-        let mean = truncate(val.iter().sum::<f32>() / val.len() as f32, 1);
+        let mean = truncate((val.iter().sum::<f32>() / val.len() as f32) as f64, 1);
         val.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let min = val[0];
         let max = val[val.len() - 1];
-        hashmap2.insert(key.to_owned(), (min, mean, max));
+        hashmap2.insert(key.to_owned(), (min, mean as f32, max));
     });
     println!(
         "Took {} milliseconds for conversion technology",

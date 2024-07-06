@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use dashmap::DashMap;
 use memmap2;
 use once_cell::sync::OnceCell;
@@ -60,10 +58,6 @@ fn print_stat() {
 /// Actual function (other are just tests)
 fn memmap() {
     print_stat();
-    rayon::ThreadPoolBuilder::new()
-        .num_threads(18)
-        .build_global()
-        .expect("Failed");
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
     let hashmap: DashMap<String, Station> = DashMap::with_shard_amount(SHARD_AMOUNT);
@@ -82,7 +76,7 @@ fn memmap() {
 
     let parsed = unsafe { std::str::from_utf8_unchecked(&memmap_thing) };
     #[cfg(debug_assertions)]
-    let all = parsed.par_lines().count();
+    // let all = parsed.par_lines().count();
     #[cfg(debug_assertions)]
     let count = AtomicU64::new(0);
     let start_of_parsing = Instant::now();
@@ -110,10 +104,17 @@ fn memmap() {
             st.min = temp;
         }
         st.sum += temp;
+        /* #[cfg(debug_assertions)]
+        {
+            let c = count.load(std::sync::atomic::Ordering::Relaxed);
+            if c % 1_000_000 == 0 {
+                println!("Progress: {}% ({c}/{all})", truncate(c as f64 / all as f64 , 2));
+            }
+        } */
     });
     hashmap.par_iter_mut().for_each(|mut t| {
         let st = t.value_mut();
-        st.avg = truncate(st.sum / st.len as f32, 1)
+        st.avg = truncate(st.sum as f64 / st.len as f64, 1) as f32
     });
     println!(
         "Took {} milliseconds for parsing and processing",
@@ -133,9 +134,9 @@ fn memmap() {
             println!(
                 "Station: {}, Temperature (Min/Mean/Max): {}/{}/{}",
                 thing.key(),
-                thing.value().0,
-                thing.value().1,
-                thing.value().2
+                thing.value().min,
+                thing.value().avg,
+                thing.value().max
             );
         }
         println!("{:#?}", hashmap.get("Alexandria").unwrap().value());
