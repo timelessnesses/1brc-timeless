@@ -23,9 +23,10 @@ cargo run -r -- 1000000000
 ran on my laptop (AMD Ryzen 7 7730U with 16 Gigabytes of RAM with 8 Cores and 16 Logical Processors) on Windows
 | stuff                	| my implementation in rust 	| #1 java 1brc                 	|
 |----------------------	|---------------------------	|------------------------------	|
-| RAM Usage (Peak)     	| 3 Megabytes            	| 60+ Megabytes         	|
-| Time to process      	| 36 seconds (pretty close)          	| 55 seconds                   	|
-| Peak Disk Activities 	| 220+ MB/s                 	| 180+ MB/s 	|
+| RAM Usage (Peak)     	| 7 Megabytes            	| 80+ Megabytes         	|
+| Time to process      	| 32 seconds (pretty close)          	| 56 seconds                   	|
+| Peak Disk Activities 	| 460+ MB/s                 	| 280+ MB/s 	|
+| Avg Disk Activites    | 230-420+ MB/S                            | 230-280+ MB/S
 
 ![](./perf.png)
 
