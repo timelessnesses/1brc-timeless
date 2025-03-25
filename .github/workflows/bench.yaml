@@ -99,7 +99,7 @@ jobs:
         working-directory: 1brc
         run: mvn clean verify
       - name: Compile time!!!!!!
-        run: native-image -O3 -H:TuneInlinerExploration=1 -march=native --enable-preview --initialize-at-build-time=dev.morling.onebrc.CalculateAverage_thomaswue\$Scanner --gc=epsilon -H:-GenLoopSafepoints -cp target/average-1.0.0-SNAPSHOT.jar -o ../CalculateAverage_thomaswue_image
+        run: native-image -O3 -H:+UnlockExperimentalVMOptions -H:TuneInlinerExploration=1 -march=native --enable-preview --initialize-at-build-time=dev.morling.onebrc.CalculateAverage_thomaswue\$Scanner --gc=epsilon -H:-GenLoopSafepoints -cp target/average-1.0.0-SNAPSHOT.jar -o ../CalculateAverage_thomaswue_image
         working-directory: 1brc
       - name: run!!
         run: hyperfine -w 1 -N 1 -r 1 './CalculateAverage_thomaswue_image' './target/release/lalalalalala'
