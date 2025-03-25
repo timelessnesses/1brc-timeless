@@ -46,4 +46,5 @@ jobs:
           enableCrossOsArchive: true
       - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
         name: Generate measurements.txt
-        run: python ./scripts/create_measurements.py 1_000_000_000
+        working-directory: scripts/create_measurements
+        run: cargo +nightly run -r -- 1_000_000_000
