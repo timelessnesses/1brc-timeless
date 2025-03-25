@@ -46,6 +46,7 @@ jobs:
           path: ./measurements.txt
           key: measurements
           enableCrossOsArchive: true
+          lookup-only: true
 
       - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
         name: Install minimal nightly
