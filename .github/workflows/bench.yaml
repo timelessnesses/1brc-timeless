@@ -47,7 +47,8 @@ jobs:
           key: measurements
           enableCrossOsArchive: true
 
-      - name: Install minimal nightly
+      - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
+        name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
