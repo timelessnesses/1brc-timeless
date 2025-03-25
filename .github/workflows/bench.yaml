@@ -101,5 +101,7 @@ jobs:
       - name: Compile time!!!!!!
         run: native-image -O3 -H:TuneInlinerExploration=1 -march=native --enable-preview --initialize-at-build-time=dev.morling.onebrc.CalculateAverage_thomaswue\$Scanner --gc=epsilon -H:-GenLoopSafepoints -cp target/average-1.0.0-SNAPSHOT.jar -o ../CalculateAverage_thomaswue_image dev.morling.onebrc.CalculateAverage_thomaswue
         working-directory: 1brc
+      - name: move the rust binary thingy
+        run: mv target/release/lalalalalala .
       - name: run!!
-        run: hyperfine -w 1 './CalculateAverage_thomaswue_image' './target/release/lalalalalala'
+        run: hyperfine -w 1 '.\CalculateAverage_thomaswue_image' '.\lalalalalala'
