@@ -1,4 +1,4 @@
-use rand::seq::SliceRandom;
+use rand::prelude::IndexedRandom;
 use rand_distr::{self, Distribution};
 use rayon::{
     self,
@@ -31,7 +31,7 @@ impl Stations {
     fn get_random_station(&self) -> WeatherStation {
         let stations = self.0.read().unwrap();
         stations
-            .choose(&mut rand::thread_rng())
+            .choose(&mut rand::rng())
             .map(|s| WeatherStation {
                 station: s.station.to_string(),
                 temp: s.temp,
@@ -43,7 +43,7 @@ impl Stations {
 impl WeatherStation {
     fn measurement(&self) -> f32 {
         let r = rand_distr::Normal::new(self.temp, 10.0).unwrap();
-        (r.sample(&mut rand::thread_rng()) * 10.0).round() / 10.0
+        (r.sample(&mut rand::rng()) * 10.0).round() / 10.0
     }
 }
 
