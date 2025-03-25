@@ -10,6 +10,7 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+        
       - name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
@@ -35,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        
       - name: Cache measurements.txt
         id: measurements
         uses: actions/cache@v3
@@ -44,15 +46,18 @@ jobs:
           path: ./measurements.txt
           key: measurements
           enableCrossOsArchive: true
+
       - name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
+
       - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
         name: Generate measurements.txt
         working-directory: scripts/create_measurements
         run: cargo +nightly run -r -- 1000000000
+
       - if: ${{ steps.measurements.outputs.cache-hit != 'true' }}
         name: move the measurements.txt
         run: mv measurements.txt ../../
@@ -66,13 +71,16 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+        
       - name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: nightly
+
       - name: Install hyperfine
         run: cargo +nightly install hyperfine
+
       - name: Cache measurements.txt
         id: measurements
         uses: actions/cache@v3
@@ -82,26 +90,41 @@ jobs:
           path: ./measurements.txt
           key: measurements
           enableCrossOsArchive: true
+
       - name: Build
         run: cargo +nightly build -r
+
       - name: checkout 1brc
         uses: actions/checkout@v4
         with:
           repository: gunnarmorling/1brc
           path: 1brc
+
       - name: install graal 21.0.2
         uses: graalvm/setup-graalvm@v1
         with:
           distribution: 'graalvm'
           java-version: '21.0.2'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: maven the fuck out of 1brc
         working-directory: 1brc
         run: mvn clean verify
+
       - name: Compile time!!!!!!
         run: native-image -O3 -H:TuneInlinerExploration=1 -march=native --enable-preview --initialize-at-build-time=dev.morling.onebrc.CalculateAverage_thomaswue\$Scanner --gc=epsilon -H:-GenLoopSafepoints -cp target/average-1.0.0-SNAPSHOT.jar -o ../CalculateAverage_thomaswue_image dev.morling.onebrc.CalculateAverage_thomaswue
         working-directory: 1brc
+
       - name: move the rust binary thingy
         run: mv target/release/lalalalalala .
-      - name: run!!
-        run: hyperfine -w 1 '.\CalculateAverage_thomaswue_image' '.\lalalalalala'
+
+      - name: run!!! (Linux is awesome!!!!)
+        run: hyperfine -w 1 './CalculateAverage_thomaswue_image' './lalalalalala'
+        shell: bash
+        if: runner.os != 'Windows'
+
+      - name: run!!! (Windows cannot even fucking do ./ like linux what the hell man)
+        run: |
+          hyperfine -w 1 ".\CalculateAverage_thomaswue_image" ".\lalalalalala"
+        shell: pwsh
+        if: runner.os == 'Windows'
