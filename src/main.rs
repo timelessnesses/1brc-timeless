@@ -16,8 +16,6 @@ fn main() {
     memmap()
 }
 
-const SHARD_AMOUNT: usize = 2048;
-
 #[derive(serde::Serialize, Debug, Default)]
 struct Station {
     #[serde(skip_serializing)]
@@ -38,7 +36,7 @@ fn print_stat() {
         *shard_count_thing.get_or_init(|| {
             (std::thread::available_parallelism().map_or(0, usize::from) * 4).next_power_of_two()
         }),
-        SHARD_AMOUNT
+        1024
     );
 }
 
@@ -48,11 +46,9 @@ fn memmap() {
     print_stat();
     let start_of_buffering = Instant::now();
     let f = std::fs::File::open("./measurements.txt").unwrap();
-    let hashmap: DashMap<String, Station> = DashMap::with_shard_amount(SHARD_AMOUNT);
+    let hashmap = DashMap::with_hasher_and_shard_amount(fxhash::FxBuildHasher::default(), 1024);
     let memmap_thing = unsafe {
         memmap2::MmapOptions::new()
-            .stack()
-            .populate()
             .huge(None)
             .map_copy_read_only(&f)
             .unwrap()
